@@ -178,6 +178,28 @@
       margin: 0;
       accent-color: var(--accent);
     }
+
+    .slider-scale {
+      margin-top: 2px;
+      display: grid;
+      grid-template-columns: repeat(11, minmax(0, 1fr));
+      gap: 0;
+      user-select: none;
+    }
+
+    .slider-scale span {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .slider-scale span::before {
+      content: "";
+      display: block;
+      width: 1px;
+      height: 6px;
+      background: #94a3b8;
+    }
   </style>
 </head>
 <body>
@@ -204,7 +226,10 @@
         <span class="label">ハザードマップ表示率</span>
         <span id="opacityValue" class="value">0%</span>
       </div>
-      <input id="opacitySlider" type="range" min="0" max="100" step="1" value="0" />
+      <input id="opacitySlider" type="range" min="0" max="100" step="10" value="0" />
+      <div class="slider-scale" aria-hidden="true">
+        <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+      </div>
     </section>
   </main>
 
