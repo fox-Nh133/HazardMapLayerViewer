@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>危険箇所予想マップ × ハザードマップ</title>
+  <meta name="description" content="スライダーで重なり具合を調整し、危険箇所予想マップと実際のハザードマップのズレを視覚的に確認できます。" />
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --sub: #475569;
+      --accent: #2563eb;
+      --border: #dbe4f0;
+      --track: #e2e8f0;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN",
+        "Yu Gothic", "Noto Sans JP", sans-serif;
+      min-height: 100dvh;
+    }
+
+    .app {
+      width: min(100%, 760px);
+      margin: 0 auto;
+      min-height: 100dvh;
+      display: grid;
+      grid-template-rows: 1fr auto;
+      gap: 12px;
+      padding: 12px 12px calc(14px + env(safe-area-inset-bottom));
+    }
+
+    @media (min-width: 1024px) {
+      .app {
+        width: min(100%, 1280px);
+        padding: 16px 8px calc(18px + env(safe-area-inset-bottom));
+      }
+    }
+
+    .controls, .map-wrap {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+    }
+
+    .map-wrap {
+      padding: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .map-stack {
+      position: relative;
+      width: 100%;
+      max-width: 100%;
+      line-height: 0;
+      border-radius: 10px;
+      overflow: hidden;
+      background: #eef2f7;
+    }
+
+    .map-stack img {
+      display: block;
+      width: 100%;
+      height: auto;
+      max-width: 100%;
+      object-fit: contain;
+      user-select: none;
+      -webkit-user-drag: none;
+      pointer-events: none;
+    }
+
+    #overlayMap {
+      position: absolute;
+      inset: 0;
+      opacity: 0.5; /* 初期値 50% */
+    }
+
+    .controls { padding: 14px; }
+
+    .hazard-selector {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      padding: 10px 12px;
+      margin-bottom: 12px;
+      border-radius: 12px;
+      background: var(--track);
+      gap: 10px;
+    }
+
+    .hazard-selector-label {
+      color: var(--sub);
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+
+    .quake-switch {
+      position: relative;
+      width: 52px;
+      height: 32px;
+      display: inline-block;
+      cursor: pointer;
+    }
+
+    .quake-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+      position: absolute;
+    }
+
+    .quake-switch-track {
+      position: absolute;
+      inset: 0;
+      border-radius: 999px;
+      background: #cbd5e1;
+      transition: background-color 0.2s ease;
+    }
+
+    .quake-switch-thumb {
+      position: absolute;
+      top: 4px;
+      left: 4px;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.3);
+      transition: transform 0.2s ease;
+    }
+
+    .quake-switch input:checked + .quake-switch-track {
+      background: var(--accent);
+    }
+
+    .quake-switch input:checked + .quake-switch-track .quake-switch-thumb {
+      transform: translateX(20px);
+    }
+
+    .control-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      gap: 10px;
+    }
+
+    .control-head .label {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .control-head .value {
+      font-weight: 700;
+      color: var(--accent);
+      min-width: 3.5em;
+      text-align: right;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      height: 44px; /* 押しやすいサイズ */
+      margin: 0;
+      accent-color: var(--accent);
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="map-wrap" aria-label="地図比較エリア">
+      <div class="map-stack">
+        <img id="baseMap" alt="生徒の危険箇所予想マップ" />
+        <img id="overlayMap" alt="実際のハザードマップ" />
+      </div>
+    </section>
+
+    <section class="controls" aria-label="透過度調整">
+      <div class="hazard-selector">
+        <span class="hazard-selector-label">地震ハザードのみ表示</span>
+        <label class="quake-switch">
+          <input id="earthquakeToggle" type="checkbox" aria-label="地震ハザードのみ表示を切り替え" />
+          <span class="quake-switch-track">
+            <span class="quake-switch-thumb"></span>
+          </span>
+        </label>
+      </div>
+
+      <div class="control-head">
+        <span class="label">ハザードマップ表示率</span>
+        <span id="opacityValue" class="value">50%</span>
+      </div>
+      <input id="opacitySlider" type="range" min="0" max="100" step="1" value="50" />
+    </section>
+  </main>
+
+  <script>
+    // ===== 画像パス指定（ここを書き換えて使います） =====
+    const baseImagePath = "images/map_student.png";
+    const waterHazardImagePath = "images/map_hazard_flood.png";
+    const earthquakeHazardImagePath = "images/map_hazard_earthquake.png";
+    const baseMapYOffset = "1.6%"; // map_student を少し下へ調整
+    // ==============================================
+
+    const baseMap = document.getElementById("baseMap");
+    const overlayMap = document.getElementById("overlayMap");
+    const opacitySlider = document.getElementById("opacitySlider");
+    const opacityValue = document.getElementById("opacityValue");
+    const earthquakeToggle = document.getElementById("earthquakeToggle");
+    const opacityLabel = document.querySelector(".control-head .label");
+
+    baseMap.src = baseImagePath;
+    overlayMap.src = waterHazardImagePath;
+    overlayMap.alt = "水害ハザードマップ";
+
+    function updateOpacity(percent) {
+      overlayMap.style.opacity = String(percent / 100);
+      opacityValue.textContent = `${percent}%`;
+    }
+
+    function setMapMode(earthquakeOnly) {
+      if (earthquakeOnly) {
+        baseMap.src = earthquakeHazardImagePath;
+        baseMap.alt = "地震ハザードマップ";
+        baseMap.style.transform = "translateY(0)";
+        overlayMap.style.display = "none";
+        opacitySlider.disabled = true;
+        opacitySlider.setAttribute("aria-disabled", "true");
+        opacityLabel.textContent = "ハザードマップ表示率（地震表示中は固定）";
+      } else {
+        baseMap.src = baseImagePath;
+        baseMap.alt = "生徒の危険箇所予想マップ";
+        baseMap.style.transform = `translateY(${baseMapYOffset})`;
+        overlayMap.src = waterHazardImagePath;
+        overlayMap.alt = "水害ハザードマップ";
+        overlayMap.style.display = "block";
+        opacitySlider.disabled = false;
+        opacitySlider.setAttribute("aria-disabled", "false");
+        opacityLabel.textContent = "ハザードマップ表示率";
+        updateOpacity(Number(opacitySlider.value));
+      }
+    }
+
+    updateOpacity(Number(opacitySlider.value));
+    setMapMode(false);
+
+    opacitySlider.addEventListener("input", (e) => {
+      updateOpacity(Number(e.target.value));
+    });
+
+    earthquakeToggle.addEventListener("change", (e) => {
+      setMapMode(e.target.checked);
+    });
+  </script>
+</body>
+</html>
